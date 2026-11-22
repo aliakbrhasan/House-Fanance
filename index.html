@@ -9,6 +9,9 @@
   <meta name="theme-color" content="#FAF8F5" />
   <title>الإدارة المالية</title>
 
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -326,7 +329,36 @@
     }
 
     .toast.show { opacity: 1; }
-    .chart-box { position: relative; height: 260px; margin-top: 10px; }
+    .chart-box { position: relative; height: 240px; width: 100%; margin-top: 10px; }
+    .chart-box.tall { height: 275px; }
+    .chart-empty { display: none; align-items: center; justify-content: center; height: 180px; color: var(--muted); font-size: 13.5px; text-align: center; background: var(--bg); border-radius: 14px; margin-top: 10px; }
+    .stats-top-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .stats-top-bar select { flex: 1; }
+    .delta-pill { font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 12px; white-space: nowrap; background: var(--accent-soft); color: var(--muted); }
+    .delta-pill.good { background: #E7F3EC; color: var(--success); }
+    .delta-pill.warn { background: #FCECE9; color: var(--danger); }
+    .savings-card { padding: 14px 16px; }
+    .savings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
+    .savings-rate { font-weight: 800; color: var(--primary); direction: ltr; }
+    .progress-track { height: 8px; background: var(--accent-soft); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--success); border-radius: 99px; transition: width 0.35s ease; }
+    .progress-fill.neg { background: var(--danger); }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .card-head .section-label { margin-bottom: 0; }
+    .range-pills { display: flex; gap: 4px; background: var(--accent-soft); padding: 3px; border-radius: 10px; }
+    .range-pill { border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 11.5px; font-weight: 700; padding: 5px 9px; border-radius: 8px; cursor: pointer; }
+    .range-pill.active { background: var(--surface); color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .cat-breakdown { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .cat-row { cursor: pointer; padding: 6px 8px; border-radius: 12px; transition: background 0.15s; }
+    .cat-row:active { background: var(--bg); }
+    .cat-row-top { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; margin-bottom: 5px; }
+    .cat-row-name { display: flex; align-items: center; gap: 7px; font-weight: 700; color: var(--text); }
+    .cat-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .cat-row-meta { display: flex; align-items: center; gap: 8px; direction: ltr; }
+    .cat-row-amt { font-weight: 800; color: var(--text); font-size: 13px; }
+    .cat-row-pct { font-size: 11.5px; font-weight: 700; color: var(--muted); background: var(--accent-soft); padding: 2px 7px; border-radius: 8px; }
+    .cat-bar-track { height: 6px; background: var(--bg); border-radius: 99px; overflow: hidden; }
+    .cat-bar-fill { height: 100%; border-radius: 99px; }
   </style>
 </head>
 <body>
@@ -403,7 +435,10 @@
   </section>
 
   <section id="view-stats" class="view">
-    <select id="statsMonthFilter" onchange="renderStats()" style="margin-bottom:14px;"></select>
+    <div class="stats-top-bar">
+      <select id="statsMonthFilter" onchange="renderStats()"></select>
+      <span class="delta-pill" id="momDelta" style="display:none;"></span>
+    </div>
 
     <div class="kpi-grid">
       <div class="kpi-card">
@@ -420,14 +455,37 @@
       </div>
     </div>
 
-    <div class="card">
-      <span class="section-label">توزيع المصاريف حسب الفئة</span>
-      <div class="chart-box"><canvas id="catChart"></canvas></div>
+    <div class="card savings-card">
+      <div class="savings-row">
+        <span style="color:var(--muted);font-weight:700;">معدل الادخار</span>
+        <span class="savings-rate" id="savingsRateText">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="savingsBar" style="width:0%;"></div>
+      </div>
     </div>
 
     <div class="card">
-      <span class="section-label">مقارنة الأشهر (الدخل مقابل المصاريف)</span>
-      <div class="chart-box"><canvas id="trendChart"></canvas></div>
+      <div class="card-head">
+        <span class="section-label">مقارنة الأشهر (الدخل مقابل المصاريف)</span>
+        <div class="range-pills">
+          <button type="button" class="range-pill active" data-range="6" onclick="setTrendRange(6, this)">6 أشهر</button>
+          <button type="button" class="range-pill" data-range="12" onclick="setTrendRange(12, this)">12 شهر</button>
+          <button type="button" class="range-pill" data-range="0" onclick="setTrendRange(0, this)">الكل</button>
+        </div>
+      </div>
+      <div class="chart-box tall" id="trendChartBox"><canvas id="trendChart"></canvas></div>
+      <div class="chart-empty" id="trendEmpty">لا توجد بيانات كافية لعرض مقارنة الأشهر</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="section-label">توزيع المصاريف حسب الفئة</span>
+        <span style="font-size:11.5px;color:var(--muted);">اضغط على فئة لعرض سجلها</span>
+      </div>
+      <div class="chart-box" id="catChartBox"><canvas id="catChart"></canvas></div>
+      <div class="chart-empty" id="catEmpty">لا توجد مصاريف مسجلة لهذه الفترة</div>
+      <div class="cat-breakdown" id="catBreakdown"></div>
     </div>
   </section>
 </main>
@@ -698,77 +756,226 @@
     `;
   }
 
+  let trendRangeMonths = 6;
+
+  function setTrendRange(range, btn) {
+    trendRangeMonths = range;
+    document.querySelectorAll('.range-pill').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderStats();
+  }
+
+  function getMonthKey(t) {
+    const raw = String(t.month || t.date || '').trim();
+    const iso = raw.match(/^(\d{4})-(\d{2})/) || raw.match(/^(\d{4})\/(\d{1,2})/); 
+    if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}`;
+    return raw.length >= 7 ? raw.substring(0, 7) : '';
+  }
+
+  function formatMonthShort(ym) {
+    const parts = ym.split('-');
+    if (parts.length !== 2) return ym;
+    const names = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+    const mIdx = Number(parts[1]) - 1;
+    return (names[mIdx] || parts[1]) + ' ' + parts[0].slice(-2);
+  }
+
+  function formatCompact(n) {
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    if (abs >= 1000000) return sign + (abs / 1000000).toFixed(abs % 1000000 === 0 ? 0 : 1) + 'M';
+    if (abs >= 1000) return sign + Math.round(abs / 1000) + 'K';
+    return sign + String(abs);
+  }
+
+  function jumpToCategory(cat) {
+    const month = document.getElementById('statsMonthFilter').value;
+    document.getElementById('historyMonthFilter').value = month;
+    document.getElementById('historyTypeFilter').value = 'expense';
+    document.getElementById('searchInput').value = cat;
+    renderHistory();
+    const histBtn = document.querySelectorAll('.nav-btn')[1];
+    switchTab('history', histBtn);
+  }
+
   function renderStats() {
     const month = document.getElementById('statsMonthFilter').value;
-    const list = month === 'all' ? allTransactions : allTransactions.filter(t => t.month === month);
+    const list = month === 'all' ? allTransactions : allTransactions.filter(t => getMonthKey(t) === month);
 
     let totalInc = 0, totalExp = 0;
     const catTotals = {};
 
     list.forEach(t => {
-      if (t.type === 'income') totalInc += t.amount;
+      const amt = Number(t.amount) || 0;
+      if (t.type === 'income') totalInc += amt;
       else {
-        totalExp += t.amount;
-        catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+        totalExp += amt;
+        const cat = String(t.category || 'أخرى').trim() || 'أخرى';
+        catTotals[cat] = (catTotals[cat] || 0) + amt;
       }
     });
 
+    const net = totalInc - totalExp;
     document.getElementById('kpiIncome').textContent = formatNum(totalInc);
     document.getElementById('kpiExpense').textContent = formatNum(totalExp);
-    document.getElementById('kpiNet').textContent = formatNum(totalInc - totalExp);
+    const netEl = document.getElementById('kpiNet');
+    netEl.textContent = (net > 0 ? '+' : '') + formatNum(net);
+    netEl.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
 
-    const catLabels = Object.keys(catTotals);
-    const catValues = Object.values(catTotals);
-    const palette = ['#1F3A2E', '#4A725E', '#C8B69E', '#8E7A62', '#B84A39', '#6B8E78', '#D9C8B2', '#354F52', '#A47148', '#52796F'];
-
-    if (catChartInstance) catChartInstance.destroy();
-    catChartInstance = new Chart(document.getElementById('catChart'), {
-      type: 'doughnut',
-      data: {
-        labels: catLabels,
-        datasets: [{ data: catValues, backgroundColor: palette, borderWidth: 2, borderColor: '#FFFFFF' }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Tajawal', size: 12 } } } }
-      }
-    });
+    const rate = totalInc > 0 ? Math.round((net / totalInc) * 100) : 0;
+    document.getElementById('savingsRateText').textContent = `${rate}%`;
+    const barEl = document.getElementById('savingsBar');
+    barEl.style.width = `${Math.max(0, Math.min(100, Math.abs(rate)))}%`;
+    barEl.classList.toggle('neg', net < 0);
 
     const monthlyMap = {};
     allTransactions.forEach(t => {
-      if (!t.month) return;
-      if (!monthlyMap[t.month]) monthlyMap[t.month] = { inc: 0, exp: 0 };
-      if (t.type === 'income') monthlyMap[t.month].inc += t.amount;
-      else monthlyMap[t.month].exp += t.amount;
+      const mk = getMonthKey(t);
+      if (!mk) return;
+      if (!monthlyMap[mk]) monthlyMap[mk] = { inc: 0, exp: 0 };
+      const amt = Number(t.amount) || 0;
+      if (t.type === 'income') monthlyMap[mk].inc += amt;
+      else monthlyMap[mk].exp += amt;
     });
 
-    const sortedMonths = Object.keys(monthlyMap).sort().slice(-6);
-    if (trendChartInstance) trendChartInstance.destroy();
-    trendChartInstance = new Chart(document.getElementById('trendChart'), {
-      type: 'bar',
-      data: {
-        labels: sortedMonths,
-        datasets: [
-          { label: 'الدخل', data: sortedMonths.map(m => monthlyMap[m].inc), backgroundColor: '#2A6F4E', borderRadius: 6 },
-          { label: 'المصاريف', data: sortedMonths.map(m => monthlyMap[m].exp), backgroundColor: '#C8B69E', borderRadius: 6 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Tajawal', size: 12 } } } },
-        scales: { y: { beginAtZero: true } }
+    const allSortedMonths = Object.keys(monthlyMap).sort();
+    const deltaEl = document.getElementById('momDelta');
+    if (month !== 'all' && allSortedMonths.includes(month)) {
+      const idx = allSortedMonths.indexOf(month);
+      if (idx > 0) {
+        const prevExp = monthlyMap[allSortedMonths[idx - 1]].exp;
+        if (prevExp > 0) {
+          const diffPct = Math.round(((totalExp - prevExp) / prevExp) * 100);
+          deltaEl.style.display = 'inline-block';
+          deltaEl.className = 'delta-pill ' + (diffPct <= 0 ? 'good' : 'warn');
+          deltaEl.textContent = diffPct <= 0 ? `↓ ${Math.abs(diffPct)}% عن السابق` : `↑ ${diffPct}% عن السابق`;
+        } else {
+          deltaEl.style.display = 'none';
+        }
+      } else {
+        deltaEl.style.display = 'none';
       }
-    });
+    } else {
+      deltaEl.style.display = 'none';
+    }
+
+    const statsView = document.getElementById('view-stats');
+    if (!statsView || !statsView.classList.contains('active')) return;
+
+    const palette = ['#1F3A2E', '#4A725E', '#C8B69E', '#8E7A62', '#B84A39', '#6B8E78', '#D9C8B2', '#354F52', '#A47148', '#52796F'];
+    const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+    const catBox = document.getElementById('catChartBox');
+    const catEmpty = document.getElementById('catEmpty');
+    const catBreakdown = document.getElementById('catBreakdown');
+
+    if (catChartInstance) { catChartInstance.destroy(); catChartInstance = null; }
+    if (!sortedCats.length) {
+      catBox.style.display = 'none';
+      catEmpty.style.display = 'flex';
+      catBreakdown.innerHTML = '';
+    } else {
+      catBox.style.display = 'block';
+      catEmpty.style.display = 'none';
+      catChartInstance = new Chart(document.getElementById('catChart'), {
+        type: 'doughnut',
+        data: {
+          labels: sortedCats.map(c => c[0]),
+          datasets: [{ data: sortedCats.map(c => c[1]), backgroundColor: palette, borderWidth: 2, borderColor: '#FFFFFF', hoverOffset: 6 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '64%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              rtl: true,
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${formatNum(ctx.raw)} د.ع (${Math.round((ctx.raw / totalExp) * 100)}%)`
+              }
+            }
+          }
+        }
+      });
+
+      catBreakdown.innerHTML = sortedCats.map(([cat, val], i) => {
+        const pct = totalExp > 0 ? Math.round((val / totalExp) * 100) : 0;
+        const color = palette[i % palette.length];
+        return `
+          <div class="cat-row" onclick="jumpToCategory('${cat.replace(/'/g, "\\'")}')">
+            <div class="cat-row-top">
+              <span class="cat-row-name"><span class="cat-dot" style="background:${color}"></span>${cat}</span>
+              <span class="cat-row-meta">
+                <span class="cat-row-pct">${pct}%</span>
+                <span class="cat-row-amt">${formatNum(val)}</span>
+              </span>
+            </div>
+            <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    const trendBox = document.getElementById('trendChartBox');
+    const trendEmpty = document.getElementById('trendEmpty');
+    const displayMonths = trendRangeMonths > 0 ? allSortedMonths.slice(-trendRangeMonths) : allSortedMonths;
+
+    if (trendChartInstance) { trendChartInstance.destroy(); trendChartInstance = null; }
+    if (!displayMonths.length) {
+      trendBox.style.display = 'none';
+      trendEmpty.style.display = 'flex';
+    } else {
+      trendBox.style.display = 'block';
+      trendEmpty.style.display = 'none';
+      const incData = displayMonths.map(m => monthlyMap[m].inc);
+      const expData = displayMonths.map(m => monthlyMap[m].exp);
+      const netData = displayMonths.map(m => monthlyMap[m].inc - monthlyMap[m].exp);
+
+      trendChartInstance = new Chart(document.getElementById('trendChart'), {
+        type: 'bar',
+        data: {
+          labels: displayMonths.map(formatMonthShort),
+          datasets: [
+            { label: 'الدخل', data: incData, backgroundColor: '#2A6F4E', borderRadius: 6, maxBarThickness: 22 },
+            { label: 'المصاريف', data: expData, backgroundColor: '#B84A39', borderRadius: 6, maxBarThickness: 22 },
+            { label: 'الصافي', data: netData, type: 'line', borderColor: '#1F3A2E', backgroundColor: '#1F3A2E', borderWidth: 2, borderDash: [4, 4], tension: 0.3, pointRadius: 3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Tajawal', size: 12 } } },
+            tooltip: {
+              rtl: true,
+              callbacks: {
+                label: ctx => ` ${ctx.dataset.label}: ${formatNum(ctx.raw)} د.ع`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { family: 'Tajawal', size: 11 } } },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#EFECE7' },
+              ticks: {
+                font: { family: 'Tajawal', size: 11 },
+                callback: v => formatCompact(v)
+              }
+            }
+          }
+        }
+      });
+    }
   }
 
   function switchTab(tab, btn) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('view-' + tab).classList.add('active');
-    btn.classList.add('active');
-    if (tab === 'stats') renderStats();
+    if (btn) btn.classList.add('active');
+    if (tab === 'stats') requestAnimationFrame(() => renderStats());
   }
 
   function setSyncState(loading, text) {
