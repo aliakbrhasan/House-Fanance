@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="الإدارة المالية" />
+  <meta name="theme-color" content="#FAF8F5" />
+  <title>الإدارة المالية</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #FAF8F5;
+      --surface: #FFFFFF;
+      --primary: #1F3A2E;
+      --primary-light: #2D5242;
+      --accent: #C8B69E;
+      --accent-soft: #F3EFE9;
+      --text: #1C1E1D;
+      --muted: #767B78;
+      --border: #E8E3DC;
+      --danger: #B84A39;
+      --success: #2A6F4E;
+      --radius: 18px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      font-family: 'Tajawal', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding-bottom: calc(88px + var(--safe-bottom));
+      min-height: 100vh;
+    }
+
+    #lockScreen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .lock-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px 22px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 12px 30px rgba(31, 58, 46, 0.06);
+    }
+
+    .lock-card h2 { margin: 0 0 8px; color: var(--primary); font-size: 22px; }
+    .lock-card p { margin: 0 0 18px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(250, 248, 245, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 { margin: 0; font-size: 20px; font-weight: 800; color: var(--primary); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .sync-badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--accent-soft);
+      padding: 5px 10px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+    .dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    main { max-width: 520px; margin: 0 auto; padding: 18px 16px; }
+
+    .view { display: none; animation: fadeIn 0.2s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 16px rgba(31, 58, 46, 0.03);
+    }
+
+    .type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--accent-soft);
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+    }
+
+    .type-btn {
+      border: none;
+      background: transparent;
+      padding: 11px;
+      border-radius: 11px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .type-btn.active.expense { background: var(--primary); color: #fff; }
+    .type-btn.active.income { background: var(--success); color: #fff; }
+
+    .amount-box { text-align: center; margin-bottom: 18px; }
+    .amount-box label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+    .amount-input-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 16px;
+    }
+
+    .amount-input-wrap:focus-within { border-color: var(--primary); }
+
+    .amount-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--primary);
+      text-align: center;
+      outline: none;
+    }
+
+    .currency-tag { font-size: 14px; font-weight: 700; color: var(--muted); }
+    .section-label { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; display: block; }
+
+    .chips-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+
+    .chip {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 22px;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip.selected {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+
+    input[type="text"], input[type="url"], input[type="date"], input[type="password"], select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus, select:focus { border-color: var(--primary); background: #fff; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 14px;
+      background: var(--primary);
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+
+    .kpi-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .kpi-val { font-size: 15px; font-weight: 800; color: var(--primary); direction: ltr; }
+    .kpi-val.exp { color: var(--danger); }
+    .kpi-val.inc { color: var(--success); }
+
+    .tx-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tx-item:last-child { border-bottom: none; }
+    .tx-info { display: flex; flex-direction: column; gap: 3px; }
+    .tx-cat { font-size: 15px; font-weight: 700; color: var(--text); }
+    .tx-desc { font-size: 13px; color: var(--muted); }
+    .tx-date { font-size: 11.5px; color: #9A9E9B; }
+
+    .tx-right { display: flex; align-items: center; gap: 10px; }
+    .tx-amt { font-size: 15px; font-weight: 800; direction: ltr; }
+    .tx-amt.expense { color: var(--danger); }
+    .tx-amt.income { color: var(--success); }
+
+    .del-btn {
+      border: none;
+      background: var(--accent-soft);
+      color: var(--muted);
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .filter-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 8px 12px calc(10px + var(--safe-bottom));
+      z-index: 30;
+    }
+
+    .nav-btn {
+      border: none;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px;
+    }
+
+    .nav-btn.active { color: var(--primary); }
+    .nav-icon { font-size: 20px; line-height: 1; }
+
+    .toast {
+      position: fixed;
+      top: calc(70px + env(safe-area-inset-top, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      z-index: 100;
+    }
+
+    .toast.show { opacity: 1; }
+    .chart-box { position: relative; height: 260px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- شاشة الربط الأولى (تُحفظ تلقائياً في الهاتف دون الحاجة لتعديل الكود) -->
+<div id="lockScreen">
+  <div class="lock-card">
+    <h2>الإدارة المالية</h2>
+    <p>ألصق رابط Google Apps Script والرمز السري لمرة واحدة فقط لربط التطبيق بملفك</p>
+    <input type="url" id="urlInput" placeholder="https://script.google.com/macros/s/..." dir="ltr" style="margin-bottom:10px; font-size:13px;" />
+    <input type="password" id="pinInput" inputmode="numeric" placeholder="الرمز السري (الافتراضي 1234)" style="text-align:center; font-size:18px; letter-spacing:3px; margin-bottom:14px;" />
+    <button class="btn-primary" id="unlockBtn" onclick="unlockApp()">ربط ودخول</button>
+    <p id="lockError" style="color:var(--danger); margin-top:10px; display:none;"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast">تم الحفظ والمزامنة</div>
+
+<header>
+  <h1>الإدارة المالية</h1>
+  <div class="header-actions">
+    <div class="sync-badge" onclick="fetchData(true)">
+      <span class="dot" id="syncDot"></span>
+      <span id="syncText">متزامن</span>
+    </div>
+    <div class="sync-badge" onclick="resetConnection()" title="تغيير الرابط أو الرمز">⚙</div>
+  </div>
+</header>
+
+<main>
+  <section id="view-add" class="view active">
+    <div class="card">
+      <div class="type-toggle">
+        <button class="type-btn active expense" id="btnExpense" onclick="setType('expense')">مصروف</button>
+        <button class="type-btn income" id="btnIncome" onclick="setType('income')">دخل</button>
+      </div>
+
+      <div class="amount-box">
+        <label>المبلغ</label>
+        <div class="amount-input-wrap">
+          <input type="number" id="amountInput" class="amount-input" inputmode="numeric" placeholder="0" />
+          <span class="currency-tag">د.ع</span>
+        </div>
+      </div>
+
+      <span class="section-label">الفئة</span>
+      <div class="chips-grid" id="categoryChips"></div>
+
+      <div class="field-row">
+        <input type="text" id="descInput" placeholder="الوصف (اختياري)" />
+        <input type="date" id="dateInput" />
+      </div>
+
+      <button class="btn-primary" id="saveBtn" onclick="saveTransaction()">حفظ العملية</button>
+    </div>
+
+    <div class="card">
+      <span class="section-label" style="margin-bottom:4px;">أحدث 5 عمليات</span>
+      <div id="recentList"></div>
+    </div>
+  </section>
+
+  <section id="view-history" class="view">
+    <div class="filter-bar">
+      <select id="historyMonthFilter" onchange="renderHistory()"></select>
+      <select id="historyTypeFilter" onchange="renderHistory()">
+        <option value="all">الكل (مصروف ودخل)</option>
+        <option value="expense">المصاريف فقط</option>
+        <option value="income">الدخل فقط</option>
+      </select>
+    </div>
+    <input type="text" id="searchInput" placeholder="ابحث في الوصف أو الفئة..." oninput="renderHistory()" style="margin-bottom:12px;" />
+    <div class="card" id="historyList"></div>
+  </section>
+
+  <section id="view-stats" class="view">
+    <select id="statsMonthFilter" onchange="renderStats()" style="margin-bottom:14px;"></select>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">إجمالي الدخل</div>
+        <div class="kpi-val inc" id="kpiIncome">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">إجمالي المصاريف</div>
+        <div class="kpi-val exp" id="kpiExpense">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">الصافي</div>
+        <div class="kpi-val" id="kpiNet">0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="section-label">توزيع المصاريف حسب الفئة</span>
+      <div class="chart-box"><canvas id="catChart"></canvas></div>
+    </div>
+
+    <div class="card">
+      <span class="section-label">مقارنة الأشهر (الدخل مقابل المصاريف)</span>
+      <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="nav-btn active" onclick="switchTab('add', this)">
+    <span class="nav-icon">＋</span>
+    <span>تسجيل</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('history', this)">
+    <span class="nav-icon">☰</span>
+    <span>السجل</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('stats', this)">
+    <span class="nav-icon">◔</span>
+    <span>الإحصائيات</span>
+  </button>
+</nav>
+
+<script>
+  const EXPENSE_CATEGORIES = [
+    'المنزل', 'تمتم', 'غصون', 'علي', 'السيارة والمواصلات',
+    'صحة وعناية', 'هدنة', 'الادخار (السلف)', 'السفر', 'الديون'
+  ];
+
+  const INCOME_CATEGORIES = [
+    'راتب علي', 'راتب غصون', 'بيج تمتم', 'مدخرات (زين كاش_نيو)',
+    'القبس', 'اعمال اخرى', 'استدانة'
+  ];
+
+  let allTransactions = [];
+  let currentType = 'expense';
+  let selectedCategory = EXPENSE_CATEGORIES[0];
+  let apiUrl = localStorage.getItem('finance_api_url') || '';
+  let userPin = localStorage.getItem('finance_pin') || '';
+  let catChartInstance = null;
+  let trendChartInstance = null;
+
+  document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+  renderCategoryChips();
+
+  if (apiUrl && userPin) {
+    document.getElementById('lockScreen').style.display = 'none';
+    fetchData();
+  }
+
+  async function unlockApp() {
+    const urlVal = document.getElementById('urlInput').value.trim();
+    const pinVal = document.getElementById('pinInput').value.trim();
+    const err = document.getElementById('lockError');
+    const btn = document.getElementById('unlockBtn');
+
+    if (!urlVal.startsWith('https://script.google.com/')) {
+      err.textContent = 'يرجى لصق رابط Google Apps Script الصحيح';
+      err.style.display = 'block';
+      return;
+    }
+    if (!pinVal) {
+      err.textContent = 'يرجى إدخال الرمز السري';
+      err.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'جارٍ الربط والتهجير...';
+    err.style.display = 'none';
+
+    apiUrl = urlVal;
+    userPin = pinVal;
+
+    const ok = await fetchData();
+    btn.disabled = false;
+    btn.textContent = 'ربط ودخول';
+
+    if (ok) {
+      localStorage.setItem('finance_api_url', apiUrl);
+      localStorage.setItem('finance_pin', userPin);
+      document.getElementById('lockScreen').style.display = 'none';
+    } else {
+      err.textContent = 'تعذر الاتصال؛ تأكد من صحة الرابط والرمز السري وأن النشر مضبوط على Anyone';
+      err.style.display = 'block';
+    }
+  }
+
+  function resetConnection() {
+    if (!confirm('هل تريد تعديل رابط الربط أو الرمز السري؟')) return;
+    document.getElementById('urlInput').value = apiUrl;
+    document.getElementById('pinInput').value = userPin;
+    document.getElementById('lockScreen').style.display = 'flex';
+  }
+
+  function setType(type) {
+    currentType = type;
+    document.getElementById('btnExpense').classList.toggle('active', type === 'expense');
+    document.getElementById('btnIncome').classList.toggle('active', type === 'income');
+    selectedCategory = type === 'expense' ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0];
+    renderCategoryChips();
+  }
+
+  function renderCategoryChips() {
+    const list = currentType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    const container = document.getElementById('categoryChips');
+    container.innerHTML = list.map(cat => `
+      <button type="button" class="chip ${cat === selectedCategory ? 'selected' : ''}" onclick="selectCategory('${cat}')">${cat}</button>
+    `).join('');
+  }
+
+  function selectCategory(cat) {
+    selectedCategory = cat;
+    renderCategoryChips();
+  }
+
+  async function fetchData(showNotify = false) {
+    setSyncState(true, 'جارٍ المزامنة...');
+    try {
+      const res = await fetch(`${apiUrl}?pin=${encodeURIComponent(userPin)}`);
+      const data = await res.json();
+      if (data.status !== 'success') {
+        setSyncState(false, 'خطأ');
+        return false;
+      }
+      allTransactions = data.transactions || [];
+      populateMonthFilters();
+      renderRecent();
+      renderHistory();
+      renderStats();
+      setSyncState(false, 'متزامن');
+      if (showNotify) showToast('تم تحديث البيانات من Google Sheets');
+      return true;
+    } catch (e) {
+      setSyncState(false, 'غير متصل');
+      return false;
+    }
+  }
+
+  async function saveTransaction() {
+    const amount = Number(document.getElementById('amountInput').value);
+    const description = document.getElementById('descInput').value.trim();
+    const date = document.getElementById('dateInput').value;
+
+    if (!amount || amount <= 0) {
+      showToast('يرجى إدخال مبلغ صحيح');
+      return;
+    }
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.textContent = 'جارٍ الحفظ...';
+    setSyncState(true, 'جارٍ الحفظ...');
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          pin: userPin,
+          action: 'add',
+          type: currentType,
+          amount,
+          category: selectedCategory,
+          description,
+          date
+        })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        allTransactions.unshift(data.transaction);
+        allTransactions.sort((a, b) => (b.date > a.date ? 1 : -1));
+        document.getElementById('amountInput').value = '';
+        document.getElementById('descInput').value = '';
+        populateMonthFilters();
+        renderRecent();
+        renderHistory();
+        renderStats();
+        showToast('تم الحفظ في Google Sheets بنجاح');
+      } else {
+        showToast(data.message || 'حدث خطأ أثناء الحفظ');
+      }
+    } catch (e) {
+      showToast('تعذر الاتصال بالإنترنت');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'حفظ العملية';
+      setSyncState(false, 'متزامن');
+    }
+  }
+
+  async function deleteTx(id) {
+    if (!confirm('هل تريد حذف هذه العملية من Google Sheets؟')) return;
+    setSyncState(true, 'جارٍ الحذف...');
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ pin: userPin, action: 'delete', id })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        allTransactions = allTransactions.filter(t => t.id !== id);
+        renderRecent();
+        renderHistory();
+        renderStats();
+        showToast('تم الحذف بنجاح');
+      }
+    } catch (e) {
+      showToast('تعذر الحذف');
+    } finally {
+      setSyncState(false, 'متزامن');
+    }
+  }
+
+  function populateMonthFilters() {
+    const months = [...new Set(allTransactions.map(t => t.month))].filter(Boolean).sort().reverse();
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    if (!months.includes(currentMonth)) months.unshift(currentMonth);
+
+    const optionsHtml = `<option value="all">جميع الأشهر</option>` +
+      months.map(m => `<option value="${m}">${m}</option>`).join('');
+
+    const hFilter = document.getElementById('historyMonthFilter');
+    const sFilter = document.getElementById('statsMonthFilter');
+    const prevH = hFilter.value;
+    const prevS = sFilter.value;
+
+    hFilter.innerHTML = optionsHtml;
+    sFilter.innerHTML = optionsHtml;
+
+    hFilter.value = prevH && [...hFilter.options].some(o => o.value === prevH) ? prevH : months[0];
+    sFilter.value = prevS && [...sFilter.options].some(o => o.value === prevS) ? prevS : months[0];
+  }
+
+  function renderRecent() {
+    const container = document.getElementById('recentList');
+    const items = allTransactions.slice(0, 5);
+    container.innerHTML = items.length ? items.map(txHtml).join('') : '<p style="color:var(--muted);text-align:center;">لا توجد عمليات بعد</p>';
+  }
+
+  function renderHistory() {
+    const month = document.getElementById('historyMonthFilter').value;
+    const type = document.getElementById('historyTypeFilter').value;
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+    const filtered = allTransactions.filter(t => {
+      if (month !== 'all' && t.month !== month) return false;
+      if (type !== 'all' && t.type !== type) return false;
+      if (q && !(t.description.toLowerCase().includes(q) || t.category.toLowerCase().includes(q))) return false;
+      return true;
+    });
+
+    const container = document.getElementById('historyList');
+    container.innerHTML = filtered.length ? filtered.map(txHtml).join('') : '<p style="color:var(--muted);text-align:center;">لا توجد نتائج مطابقة</p>';
+  }
+
+  function txHtml(t) {
+    const sign = t.type === 'income' ? '+' : '-';
+    return `
+      <div class="tx-item">
+        <div class="tx-info">
+          <span class="tx-cat">${t.category}</span>
+          ${t.description ? `<span class="tx-desc">${t.description}</span>` : ''}
+          <span class="tx-date">${t.date}</span>
+        </div>
+        <div class="tx-right">
+          <span class="tx-amt ${t.type}">${sign}${formatNum(t.amount)}</span>
+          <button class="del-btn" onclick="deleteTx('${t.id}')" title="حذف">×</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderStats() {
+    const month = document.getElementById('statsMonthFilter').value;
+    const list = month === 'all' ? allTransactions : allTransactions.filter(t => t.month === month);
+
+    let totalInc = 0, totalExp = 0;
+    const catTotals = {};
+
+    list.forEach(t => {
+      if (t.type === 'income') totalInc += t.amount;
+      else {
+        totalExp += t.amount;
+        catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+      }
+    });
+
+    document.getElementById('kpiIncome').textContent = formatNum(totalInc);
+    document.getElementById('kpiExpense').textContent = formatNum(totalExp);
+    document.getElementById('kpiNet').textContent = formatNum(totalInc - totalExp);
+
+    const catLabels = Object.keys(catTotals);
+    const catValues = Object.values(catTotals);
+    const palette = ['#1F3A2E', '#4A725E', '#C8B69E', '#8E7A62', '#B84A39', '#6B8E78', '#D9C8B2', '#354F52', '#A47148', '#52796F'];
+
+    if (catChartInstance) catChartInstance.destroy();
+    catChartInstance = new Chart(document.getElementById('catChart'), {
+      type: 'doughnut',
+      data: {
+        labels: catLabels,
+        datasets: [{ data: catValues, backgroundColor: palette, borderWidth: 2, borderColor: '#FFFFFF' }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Tajawal', size: 12 } } } }
+      }
+    });
+
+    const monthlyMap = {};
+    allTransactions.forEach(t => {
+      if (!t.month) return;
+      if (!monthlyMap[t.month]) monthlyMap[t.month] = { inc: 0, exp: 0 };
+      if (t.type === 'income') monthlyMap[t.month].inc += t.amount;
+      else monthlyMap[t.month].exp += t.amount;
+    });
+
+    const sortedMonths = Object.keys(monthlyMap).sort().slice(-6);
+    if (trendChartInstance) trendChartInstance.destroy();
+    trendChartInstance = new Chart(document.getElementById('trendChart'), {
+      type: 'bar',
+      data: {
+        labels: sortedMonths,
+        datasets: [
+          { label: 'الدخل', data: sortedMonths.map(m => monthlyMap[m].inc), backgroundColor: '#2A6F4E', borderRadius: 6 },
+          { label: 'المصاريف', data: sortedMonths.map(m => monthlyMap[m].exp), backgroundColor: '#C8B69E', borderRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Tajawal', size: 12 } } } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('view-' + tab).classList.add('active');
+    btn.classList.add('active');
+    if (tab === 'stats') renderStats();
+  }
+
+  function setSyncState(loading, text) {
+    document.getElementById('syncDot').classList.toggle('loading', loading);
+    document.getElementById('syncText').textContent = text;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  function formatNum(n) {
+    return Number(n || 0).toLocaleString('en-US');
+  }
+</script>
+</body>
+</html>
