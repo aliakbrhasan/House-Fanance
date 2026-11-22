@@ -360,6 +360,23 @@
     .cat-row-pct { font-size: 11.5px; font-weight: 700; color: var(--muted); background: var(--accent-soft); padding: 2px 7px; border-radius: 8px; }
     .cat-bar-track { height: 6px; background: var(--bg); border-radius: 99px; overflow: hidden; }
     .cat-bar-fill { height: 100%; border-radius: 99px; }
+    .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .edit-cats-btn { border: 1px solid var(--border); background: var(--accent-soft); color: var(--primary); font-family: inherit; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 14px; cursor: pointer; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(28, 30, 29, 0.45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal-sheet { background: var(--surface); width: 100%; max-width: 520px; max-height: 84vh; border-radius: 24px 24px 0 0; padding: 20px 18px calc(20px + var(--safe-bottom)); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 -10px 30px rgba(0,0,0,0.12); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; }
+    .modal-head h3 { margin: 0; font-size: 18px; color: var(--primary); }
+    .modal-close { border: none; background: var(--accent-soft); color: var(--muted); width: 32px; height: 32px; border-radius: 10px; font-size: 18px; cursor: pointer; }
+    .cat-add-row { display: flex; gap: 8px; }
+    .cat-add-row input { flex: 1; }
+    .cat-add-btn { border: none; background: var(--primary); color: #fff; font-family: inherit; font-size: 14px; font-weight: 700; padding: 0 18px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+    .cat-mgr-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 2px 0; }
+    .cat-mgr-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+    .cat-mgr-name { font-size: 14.5px; font-weight: 700; color: var(--text); flex: 1; }
+    .cat-mgr-actions { display: flex; align-items: center; gap: 5px; }
+    .icon-btn { border: none; background: var(--surface); border: 1px solid var(--border); color: var(--muted); width: 30px; height: 30px; border-radius: 8px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .icon-btn.del { color: var(--danger); }
   </style>
 </head>
 <body>
@@ -405,7 +422,10 @@
         </div>
       </div>
 
-      <span class="section-label">الفئة</span>
+      <div class="label-row">
+        <span class="section-label" style="margin-bottom:0;">الفئة</span>
+        <button type="button" class="edit-cats-btn" onclick="openCatModal()">تعديل الفئات ✎</button>
+      </div>
       <div class="chips-grid" id="categoryChips"></div>
 
       <div class="field-row">
@@ -506,16 +526,53 @@
   </button>
 </nav>
 
+<div class="modal-backdrop" id="catModal" onclick="if(event.target===this) closeCatModal()">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>إدارة الفئات</h3>
+      <button type="button" class="modal-close" onclick="closeCatModal()">×</button>
+    </div>
+    <div class="type-toggle" style="margin-bottom:0;">
+      <button type="button" class="type-btn active expense" id="modalBtnExpense" onclick="setModalCatType('expense')">فئات المصاريف</button>
+      <button type="button" class="type-btn income" id="modalBtnIncome" onclick="setModalCatType('income')">فئات الدخل</button>
+    </div>
+    <div class="cat-add-row">
+      <input type="text" id="newCatInput" placeholder="اسم الفئة الجديدة..." onkeydown="if(event.key==='Enter'){event.preventDefault();addNewCategory();}" />
+      <button type="button" class="cat-add-btn" onclick="addNewCategory()">إضافة</button>
+    </div>
+    <div class="cat-mgr-list" id="catManagerList"></div>
+    <button type="button" class="btn-primary" onclick="closeCatModal()">تم</button>
+  </div>
+</div>
+
 <script>
-  const EXPENSE_CATEGORIES = [
+  const DEFAULT_EXPENSE_CATEGORIES = [
     'المنزل', 'تمتم', 'غصون', 'علي', 'السيارة والمواصلات',
     'صحة وعناية', 'هدنة', 'الادخار (السلف)', 'السفر', 'الديون'
   ];
 
-  const INCOME_CATEGORIES = [
+  const DEFAULT_INCOME_CATEGORIES = [
     'راتب علي', 'راتب غصون', 'بيج تمتم', 'مدخرات (زين كاش_نيو)',
     'القبس', 'اعمال اخرى', 'استدانة'
   ];
+
+  function loadSavedCategories() {
+    try {
+      const raw = localStorage.getItem('finance_categories_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.expense) && parsed.expense.length && Array.isArray(parsed.income) && parsed.income.length) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return { expense: [...DEFAULT_EXPENSE_CATEGORIES], income: [...DEFAULT_INCOME_CATEGORIES] };
+  }
+
+  let savedCats = loadSavedCategories();
+  let EXPENSE_CATEGORIES = savedCats.expense;
+  let INCOME_CATEGORIES = savedCats.income;
+  let modalCatType = 'expense';
 
   let allTransactions = [];
   let currentType = 'expense';
@@ -588,15 +645,116 @@
 
   function renderCategoryChips() {
     const list = currentType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    if (!list.includes(selectedCategory) && list.length) selectedCategory = list[0];
     const container = document.getElementById('categoryChips');
     container.innerHTML = list.map(cat => `
-      <button type="button" class="chip ${cat === selectedCategory ? 'selected' : ''}" onclick="selectCategory('${cat}')">${cat}</button>
+      <button type="button" class="chip ${cat === selectedCategory ? 'selected' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}')">${cat}</button>
     `).join('');
   }
 
   function selectCategory(cat) {
     selectedCategory = cat;
     renderCategoryChips();
+  }
+
+  function openCatModal() {
+    modalCatType = currentType;
+    setModalCatType(modalCatType);
+    document.getElementById('catModal').classList.add('open');
+  }
+
+  function closeCatModal() {
+    document.getElementById('catModal').classList.remove('open');
+    document.getElementById('newCatInput').value = '';
+  }
+
+  function setModalCatType(type) {
+    modalCatType = type;
+    document.getElementById('modalBtnExpense').classList.toggle('active', type === 'expense');
+    document.getElementById('modalBtnIncome').classList.toggle('active', type === 'income');
+    renderCatManager();
+  }
+
+  function renderCatManager() {
+    const list = modalCatType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    const container = document.getElementById('catManagerList');
+    container.innerHTML = list.map((cat, idx) => `
+      <div class="cat-mgr-item">
+        <span class="cat-mgr-name">${cat}</span>
+        <div class="cat-mgr-actions">
+          <button type="button" class="icon-btn" onclick="moveCategory(${idx}, -1)" title="لأعلى" ${idx === 0 ? 'disabled style="opacity:0.35"' : ''}>↑</button>
+          <button type="button" class="icon-btn" onclick="moveCategory(${idx}, 1)" title="لأسفل" ${idx === list.length - 1 ? 'disabled style="opacity:0.35"' : ''}>↓</button>
+          <button type="button" class="icon-btn" onclick="renameCategory(${idx})" title="تعديل الاسم">✎</button>
+          <button type="button" class="icon-btn del" onclick="removeCategory(${idx})" title="حذف">×</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function addNewCategory() {
+    const input = document.getElementById('newCatInput');
+    const name = input.value.trim();
+    if (!name) return;
+    const list = modalCatType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    if (list.includes(name)) {
+      showToast('هذه الفئة موجودة بالفعل');
+      return;
+    }
+    list.push(name);
+    input.value = '';
+    persistCategories('تمت إضافة الفئة');
+  }
+
+  function renameCategory(idx) {
+    const list = modalCatType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    const oldName = list[idx];
+    const nextName = prompt('أدخل الاسم الجديد للفئة:', oldName);
+    if (!nextName) return;
+    const clean = nextName.trim();
+    if (!clean || clean === oldName) return;
+    if (list.includes(clean)) {
+      showToast('يوجد اسم فئة مطابق');
+      return;
+    }
+    list[idx] = clean;
+    if (selectedCategory === oldName) selectedCategory = clean;
+    persistCategories('تم تعديل اسم الفئة');
+  }
+
+  function moveCategory(idx, dir) {
+    const list = modalCatType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    const target = idx + dir;
+    if (target < 0 || target >= list.length) return;
+    [list[idx], list[target]] = [list[target], list[idx]];
+    persistCategories();
+  }
+
+  function removeCategory(idx) {
+    const list = modalCatType === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    if (list.length <= 1) {
+      showToast('يجب الإبقاء على فئة واحدة على الأقل');
+      return;
+    }
+    if (!confirm(`هل تريد حذف فئة "${list[idx]}"؟`)) return;
+    const removed = list.splice(idx, 1)[0];
+    if (selectedCategory === removed) selectedCategory = list[0];
+    persistCategories('تم حذف الفئة');
+  }
+
+  async function persistCategories(toastMsg) {
+    const payload = { expense: EXPENSE_CATEGORIES, income: INCOME_CATEGORIES };
+    localStorage.setItem('finance_categories_v1', JSON.stringify(payload));
+    renderCatManager();
+    renderCategoryChips();
+    if (toastMsg) showToast(toastMsg);
+    if (!apiUrl || !userPin) return;
+    try {
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ pin: userPin, action: 'save_categories', categories: payload })
+      });
+    } catch (e) {}
   }
 
   async function fetchData(showNotify = false) {
@@ -609,6 +767,12 @@
         return false;
       }
       allTransactions = data.transactions || [];
+      if (data.categories && Array.isArray(data.categories.expense) && data.categories.expense.length && Array.isArray(data.categories.income) && data.categories.income.length) {
+        EXPENSE_CATEGORIES = data.categories.expense;
+        INCOME_CATEGORIES = data.categories.income;
+        localStorage.setItem('finance_categories_v1', JSON.stringify(data.categories));
+        renderCategoryChips();
+      }
       populateMonthFilters();
       renderRecent();
       renderHistory();

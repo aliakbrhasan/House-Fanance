@@ -1,5 +1,8 @@
 const SECRET_PIN = '1234'; // يمكنك تغيير الرمز السري هنا
 const DATA_SHEET_NAME = 'App_Data';
+const CAT_SHEET_NAME = 'App_Categories';
+const DEFAULT_EXPENSE_CATS = ['المنزل', 'تمتم', 'غصون', 'علي', 'السيارة والمواصلات', 'صحة وعناية', 'هدنة', 'الادخار (السلف)', 'السفر', 'الديون'];
+const DEFAULT_INCOME_CATS = ['راتب علي', 'راتب غصون', 'بيج تمتم', 'مدخرات (زين كاش_نيو)', 'القبس', 'اعمال اخرى', 'استدانة'];
 
 function doGet(e) {
   try {
@@ -29,7 +32,8 @@ function doGet(e) {
     }
 
     transactions.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
-    return jsonResponse({ status: 'success', transactions });
+    const categories = getOrInitCategories_();
+    return jsonResponse({ status: 'success', transactions, categories });
   } catch (err) {
     return jsonResponse({ status: 'error', message: err.message });
   }
@@ -89,6 +93,11 @@ function doPost(e) {
       return jsonResponse({ status: 'error', message: 'العملية غير موجودة' });
     }
 
+    if (body.action === 'save_categories' && body.categories) {
+      saveCategoriesToSheet_(body.categories);
+      return jsonResponse({ status: 'success' });
+    }
+
     return jsonResponse({ status: 'error', message: 'إجراء غير مدعوم' });
   } catch (err) {
     return jsonResponse({ status: 'error', message: err.message });
@@ -107,6 +116,49 @@ function getOrInitDataSheet_() {
     migrateHistoricalSheets_(ss, sheet);
   }
   return sheet;
+}
+
+function getOrInitCategories_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CAT_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CAT_SHEET_NAME);
+    sheet.appendRow(['Type', 'Name']);
+    sheet.setFrozenRows(1);
+    const rows = [];
+    DEFAULT_EXPENSE_CATS.forEach(c => rows.push(['expense', c]));
+    DEFAULT_INCOME_CATS.forEach(c => rows.push(['income', c]));
+    sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+    return { expense: DEFAULT_EXPENSE_CATS, income: DEFAULT_INCOME_CATS };
+  }
+  const values = sheet.getDataRange().getValues();
+  const expense = [];
+  const income = [];
+  for (let i = 1; i < values.length; i++) {
+    const t = String(values[i][0] || '').trim();
+    const n = String(values[i][1] || '').trim();
+    if (!n) continue;
+    if (t === 'income') income.push(n);
+    else if (t === 'expense') expense.push(n);
+  }
+  return {
+    expense: expense.length ? expense : DEFAULT_EXPENSE_CATS,
+    income: income.length ? income : DEFAULT_INCOME_CATS
+  };
+}
+
+function saveCategoriesToSheet_(cats) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CAT_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CAT_SHEET_NAME);
+    sheet.setFrozenRows(1);
+  }
+  sheet.clearContents();
+  const rows = [['Type', 'Name']];
+  (cats.expense || []).forEach(c => { const v = String(c || '').trim(); if (v) rows.push(['expense', v]); });
+  (cats.income || []).forEach(c => { const v = String(c || '').trim(); if (v) rows.push(['income', v]); });
+  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
 }
 
 function migrateHistoricalSheets_(ss, dataSheet) {
