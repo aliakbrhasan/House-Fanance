@@ -288,8 +288,8 @@
       -webkit-backdrop-filter: blur(12px);
       border-top: 1px solid var(--border);
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      padding: 8px 12px calc(10px + var(--safe-bottom));
+      grid-template-columns: repeat(4, 1fr);
+      padding: 8px 8px calc(10px + var(--safe-bottom));
       z-index: 30;
     }
 
@@ -377,6 +377,40 @@
     .cat-mgr-actions { display: flex; align-items: center; gap: 5px; }
     .icon-btn { border: none; background: var(--surface); border: 1px solid var(--border); color: var(--muted); width: 30px; height: 30px; border-radius: 8px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .icon-btn.del { color: var(--danger); }
+    .obl-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .obl-filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; flex: 1; }
+    .obl-filter-btn { border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 18px; cursor: pointer; white-space: nowrap; }
+    .obl-filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .obl-add-btn { border: none; background: var(--primary); color: #fff; font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 14px; cursor: pointer; white-space: nowrap; }
+    .obl-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(31, 58, 46, 0.03); }
+    .obl-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .obl-title-wrap { display: flex; flex-direction: column; gap: 3px; }
+    .obl-title-line { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .obl-title { font-size: 16px; font-weight: 800; color: var(--text); }
+    .obl-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .obl-badge.installment { background: #E9F0EC; color: var(--primary); }
+    .obl-badge.salfa { background: #F5EFE6; color: #8A6A42; }
+    .obl-badge.debt { background: #FCECE9; color: var(--danger); }
+    .obl-badge.done { background: #E7F3EC; color: var(--success); }
+    .obl-sub { font-size: 12.5px; color: var(--muted); }
+    .obl-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: var(--bg); border-radius: 12px; padding: 10px 8px; margin: 10px 0 12px; text-align: center; }
+    .obl-m-lbl { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .obl-m-val { font-size: 13.5px; font-weight: 800; color: var(--text); direction: ltr; }
+    .obl-m-val.rem { color: var(--danger); }
+    .obl-m-val.paid { color: var(--success); }
+    .obl-actions { display: flex; gap: 8px; align-items: center; }
+    .obl-pay-btn { flex: 1; border: none; background: var(--primary); color: #fff; font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 11px 12px; border-radius: 12px; cursor: pointer; }
+    .obl-hist-btn { border: 1px solid var(--border); background: var(--accent-soft); color: var(--primary); font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 11px 12px; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+    .obl-payments-box { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; display: none; }
+    .obl-payments-box.open { display: block; }
+    .obl-pay-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+    .obl-pay-row:last-child { border-bottom: none; }
+    .kind-toggle { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--accent-soft); padding: 4px; border-radius: 12px; gap: 4px; }
+    .kind-btn { border: none; background: transparent; padding: 9px 6px; border-radius: 9px; font-family: inherit; font-size: 13.5px; font-weight: 700; color: var(--muted); cursor: pointer; }
+    .kind-btn.active { background: var(--primary); color: #fff; }
+    .rem-preview { background: var(--accent-soft); border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 700; color: var(--primary); }
+    .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
+    .check-row input { width: 18px; height: 18px; accent-color: var(--primary); }
   </style>
 </head>
 <body>
@@ -509,12 +543,46 @@
       <div class="cat-breakdown" id="catBreakdown"></div>
     </div>
   </section>
+
+  <section id="view-obligations" class="view">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">إجمالي المتبقي</div>
+        <div class="kpi-val exp" id="oblTotalRemaining">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">إجمالي المدفوع</div>
+        <div class="kpi-val inc" id="oblTotalPaid">0</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">النشطة</div>
+        <div class="kpi-val" id="oblActiveCount">0</div>
+      </div>
+    </div>
+
+    <div class="obl-toolbar">
+      <div class="obl-filters">
+        <button type="button" class="obl-filter-btn active" onclick="setOblFilter('all', this)">الكل</button>
+        <button type="button" class="obl-filter-btn" onclick="setOblFilter('installment', this)">أقساط</button>
+        <button type="button" class="obl-filter-btn" onclick="setOblFilter('salfa', this)">سلف</button>
+        <button type="button" class="obl-filter-btn" onclick="setOblFilter('debt', this)">ديون</button>
+        <button type="button" class="obl-filter-btn" onclick="setOblFilter('completed', this)">مكتملة</button>
+      </div>
+      <button type="button" class="obl-add-btn" onclick="openOblModal()">＋ إضافة</button>
+    </div>
+
+    <div id="obligationsList"></div>
+  </section>
 </main>
 
 <nav>
   <button class="nav-btn active" onclick="switchTab('add', this)">
     <span class="nav-icon">＋</span>
     <span>تسجيل</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('obligations', this)">
+    <span class="nav-icon">◫</span>
+    <span>الأقساط</span>
   </button>
   <button class="nav-btn" onclick="switchTab('history', this)">
     <span class="nav-icon">☰</span>
@@ -542,6 +610,60 @@
     </div>
     <div class="cat-mgr-list" id="catManagerList"></div>
     <button type="button" class="btn-primary" onclick="closeCatModal()">تم</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="oblModal" onclick="if(event.target===this) closeOblModal()">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>إضافة قسط أو سلفة أو دين</h3>
+      <button type="button" class="modal-close" onclick="closeOblModal()">×</button>
+    </div>
+    <div class="kind-toggle">
+      <button type="button" class="kind-btn active" id="kindBtn-installment" onclick="setOblKind('installment')">قسط</button>
+      <button type="button" class="kind-btn" id="kindBtn-salfa" onclick="setOblKind('salfa')">سلفة</button>
+      <button type="button" class="kind-btn" id="kindBtn-debt" onclick="setOblKind('debt')">دين</button>
+    </div>
+    <input type="text" id="oblTitleInput" placeholder="العنوان (مثلاً: أقساط المنزل، سلفة الأصدقاء)" />
+    <input type="text" id="oblPartyInput" placeholder="الجهة أو الشخص (اختياري)" />
+    <div class="field-row" style="margin-bottom:0;">
+      <input type="number" id="oblTotalInput" inputmode="numeric" placeholder="المبلغ الكلي (د.ع)" oninput="updateOblPreview()" />
+      <input type="number" id="oblPaidBeforeInput" inputmode="numeric" placeholder="المدفوع سابقاً (د.ع)" oninput="updateOblPreview()" />
+    </div>
+    <div class="rem-preview">
+      <span>المتبقي تلقائياً:</span>
+      <span id="oblRemPreview" dir="ltr">0 د.ع</span>
+    </div>
+    <input type="number" id="oblDefaultPayInput" inputmode="numeric" placeholder="مبلغ الدفعة المعتادة (اختياري لتسريع الدفع)" />
+    <input type="text" id="oblNotesInput" placeholder="ملاحظة (اختياري)" />
+    <button type="button" class="btn-primary" id="saveOblBtn" onclick="saveObligation()">حفظ الالتزام</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="oblPayModal" onclick="if(event.target===this) closeOblPayModal()">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="payModalTitle">تسجيل دفعة</h3>
+      <button type="button" class="modal-close" onclick="closeOblPayModal()">×</button>
+    </div>
+    <div class="rem-preview">
+      <span>المتبقي حالياً:</span>
+      <span id="payModalRem" dir="ltr">0 د.ع</span>
+    </div>
+    <div class="amount-box" style="margin-bottom:0;">
+      <label>مبلغ الدفعة</label>
+      <div class="amount-input-wrap">
+        <input type="number" id="payAmountInput" class="amount-input" inputmode="numeric" placeholder="0" />
+        <span class="currency-tag">د.ع</span>
+      </div>
+    </div>
+    <div style="font-size:12.5px;color:var(--muted);text-align:center;">وقت الدفع يُسجّل تلقائياً: <strong id="payAutoTime" dir="ltr"></strong></div>
+    <input type="text" id="payNoteInput" placeholder="ملاحظة (اختياري، مثلاً: دفعة شهر 11)" />
+    <label class="check-row">
+      <input type="checkbox" id="payLogExpenseCheck" checked />
+      <span>تسجيلها تلقائياً كمصروف في السجل العام</span>
+    </label>
+    <button type="button" class="btn-primary" id="confirmPayBtn" onclick="confirmOblPayment()">تأكيد وتسجيل الدفعة</button>
   </div>
 </div>
 
@@ -773,10 +895,15 @@
         localStorage.setItem('finance_categories_v1', JSON.stringify(data.categories));
         renderCategoryChips();
       }
+      if (Array.isArray(data.obligations)) {
+        allObligations = data.obligations;
+        localStorage.setItem('finance_obligations_v1', JSON.stringify(allObligations));
+      }
       populateMonthFilters();
       renderRecent();
       renderHistory();
       renderStats();
+      renderObligations();
       setSyncState(false, 'متزامن');
       if (showNotify) showToast('تم تحديث البيانات من Google Sheets');
       return true;
@@ -959,7 +1086,7 @@
     document.getElementById('historyTypeFilter').value = 'expense';
     document.getElementById('searchInput').value = cat;
     renderHistory();
-    const histBtn = document.querySelectorAll('.nav-btn')[1];
+    const histBtn = document.querySelectorAll('.nav-btn')[2];
     switchTab('history', histBtn);
   }
 
@@ -1135,12 +1262,315 @@
     }
   }
 
+  // ===== الأقساط والديون والسلف =====
+  function loadSavedObligations() {
+    try {
+      const raw = localStorage.getItem('finance_obligations_v1');
+      if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
+    } catch (e) {}
+    return [];
+  }
+
+  let allObligations = loadSavedObligations();
+  let oblFilter = 'all';
+  let newOblKind = 'installment';
+  let activePayOblId = null;
+
+  const OBL_KIND_LABELS = { installment: 'قسط', salfa: 'سلفة', debt: 'دين' };
+  const OBL_EXP_CAT = { installment: 'المنزل', salfa: 'الادخار (السلف)', debt: 'الديون' };
+
+  function getOblStats(o) {
+    const total = Number(o.totalAmount) || 0;
+    const paidBefore = Number(o.paidBefore) || 0;
+    const payments = Array.isArray(o.payments) ? o.payments : [];
+    const paidLater = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const totalPaid = paidBefore + paidLater;
+    const remaining = Math.max(0, total - totalPaid);
+    const pct = total > 0 ? Math.min(100, Math.round((totalPaid / total) * 100)) : 0;
+    return { total, paidBefore, paidLater, totalPaid, remaining, pct, done: remaining <= 0 && total > 0, payments };
+  }
+
+  function setOblFilter(f, btn) {
+    oblFilter = f;
+    document.querySelectorAll('.obl-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderObligations();
+  }
+
+  function renderObligations() {
+    let sumRem = 0, sumPaid = 0, activeCnt = 0;
+    allObligations.forEach(o => {
+      const s = getOblStats(o);
+      sumRem += s.remaining;
+      sumPaid += s.totalPaid;
+      if (!s.done) activeCnt++;
+    });
+    document.getElementById('oblTotalRemaining').textContent = formatNum(sumRem);
+    document.getElementById('oblTotalPaid').textContent = formatNum(sumPaid);
+    document.getElementById('oblActiveCount').textContent = String(activeCnt);
+
+    const filtered = allObligations.filter(o => {
+      const s = getOblStats(o);
+      if (oblFilter === 'completed') return s.done;
+      if (oblFilter === 'all') return true;
+      return o.kind === oblFilter && !s.done;
+    });
+
+    const container = document.getElementById('obligationsList');
+    if (!filtered.length) {
+      container.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);padding:28px 16px;">لا توجد التزامات هنا بعد — اضغط <strong>＋ إضافة</strong> لتسجيل قسط أو سلفة أو دين</div>';
+      return;
+    }
+
+    container.innerHTML = filtered.map(o => {
+      const s = getOblStats(o);
+      const kindLbl = OBL_KIND_LABELS[o.kind] || 'التزام';
+      const defPay = Number(o.defaultPayment) || 0;
+      const payBtnLabel = defPay > 0 ? `＋ تسجيل دفعة (${formatNum(Math.min(defPay, s.remaining))} د.ع)` : '＋ تسجيل دفعة';
+      const payRows = s.payments.slice().reverse().map(p => `
+        <div class="obl-pay-row">
+          <div>
+            <div style="font-weight:700;color:var(--text);" dir="ltr">${formatNum(p.amount)} د.ع</div>
+            <div style="font-size:11.5px;color:var(--muted);">${p.paidAt || p.date || ''}${p.note ? ' • ' + p.note : ''}</div>
+          </div>
+          <button type="button" class="del-btn" onclick="deleteOblPayment('${o.id}','${p.id}')" title="حذف الدفعة">×</button>
+        </div>
+      `).join('');
+
+      return `
+        <div class="obl-card">
+          <div class="obl-card-top">
+            <div class="obl-title-wrap">
+              <div class="obl-title-line">
+                <span class="obl-title">${o.title}</span>
+                <span class="obl-badge ${o.kind}">${kindLbl}</span>
+                ${s.done ? '<span class="obl-badge done">✓ مكتمل</span>' : ''}
+              </div>
+              ${(o.party || o.notes) ? `<span class="obl-sub">${[o.party, o.notes].filter(Boolean).join(' • ')}</span>` : ''}
+            </div>
+            <button type="button" class="del-btn" onclick="deleteObligation('${o.id}')" title="حذف">×</button>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;">
+            <span>نسبة السداد</span>
+            <strong style="color:var(--primary);" dir="ltr">${s.pct}%</strong>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:${s.pct}%;"></div></div>
+
+          <div class="obl-metrics">
+            <div><div class="obl-m-lbl">الكلي</div><div class="obl-m-val">${formatNum(s.total)}</div></div>
+            <div><div class="obl-m-lbl">المدفوع</div><div class="obl-m-val paid">${formatNum(s.totalPaid)}</div></div>
+            <div><div class="obl-m-lbl">المتبقي</div><div class="obl-m-val rem">${formatNum(s.remaining)}</div></div>
+          </div>
+
+          <div class="obl-actions">
+            ${s.done ? '<div style="flex:1;text-align:center;color:var(--success);font-weight:800;font-size:13.5px;">تم السداد بالكامل ✓</div>' : `<button type="button" class="obl-pay-btn" onclick="openOblPayModal('${o.id}')">${payBtnLabel}</button>`}
+            <button type="button" class="obl-hist-btn" onclick="toggleOblHistory('${o.id}')">الدفعات (${s.payments.length})</button>
+          </div>
+
+          <div class="obl-payments-box" id="obl-hist-${o.id}">
+            ${s.paidBefore > 0 ? `<div class="obl-pay-row"><div><div style="font-weight:700;color:var(--muted);">مدفوع سابقاً (قبل التطبيق)</div></div><div style="font-weight:800;color:var(--muted);" dir="ltr">${formatNum(s.paidBefore)} د.ع</div></div>` : ''}
+            ${payRows || '<div style="text-align:center;color:var(--muted);font-size:12.5px;padding:6px 0;">لم تُسجّل دفعات جديدة بعد</div>'}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleOblHistory(id) {
+    const el = document.getElementById('obl-hist-' + id);
+    if (el) el.classList.toggle('open');
+  }
+
+  function openOblModal() {
+    setOblKind('installment');
+    ['oblTitleInput','oblPartyInput','oblTotalInput','oblPaidBeforeInput','oblDefaultPayInput','oblNotesInput'].forEach(id => document.getElementById(id).value = '');
+    updateOblPreview();
+    document.getElementById('oblModal').classList.add('open');
+  }
+
+  function closeOblModal() {
+    document.getElementById('oblModal').classList.remove('open');
+  }
+
+  function setOblKind(kind) {
+    newOblKind = kind;
+    ['installment','salfa','debt'].forEach(k => document.getElementById('kindBtn-' + k).classList.toggle('active', k === kind));
+  }
+
+  function updateOblPreview() {
+    const total = Number(document.getElementById('oblTotalInput').value) || 0;
+    const paid = Number(document.getElementById('oblPaidBeforeInput').value) || 0;
+    const rem = Math.max(0, total - paid);
+    document.getElementById('oblRemPreview').textContent = formatNum(rem) + ' د.ع';
+  }
+
+  async function saveObligation() {
+    const title = document.getElementById('oblTitleInput').value.trim();
+    const party = document.getElementById('oblPartyInput').value.trim();
+    const totalAmount = Number(document.getElementById('oblTotalInput').value) || 0;
+    const paidBefore = Number(document.getElementById('oblPaidBeforeInput').value) || 0;
+    const defaultPayment = Number(document.getElementById('oblDefaultPayInput').value) || 0;
+    const notes = document.getElementById('oblNotesInput').value.trim();
+
+    if (!title) { showToast('يرجى كتابة العنوان'); return; }
+    if (totalAmount <= 0) { showToast('يرجى إدخال المبلغ الكلي'); return; }
+
+    const obl = {
+      id: 'OBL-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      kind: newOblKind, title, party, totalAmount, paidBefore, defaultPayment, notes,
+      createdAt: new Date().toISOString(),
+      payments: []
+    };
+
+    const btn = document.getElementById('saveOblBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+    allObligations.unshift(obl);
+    localStorage.setItem('finance_obligations_v1', JSON.stringify(allObligations));
+    renderObligations();
+    closeOblModal();
+    showToast('تمت إضافة الالتزام بنجاح');
+
+    if (apiUrl && userPin) {
+      try {
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ pin: userPin, action: 'add_obligation', obligation: obl })
+        });
+      } catch (e) {}
+    }
+    btn.disabled = false; btn.textContent = 'حفظ الالتزام';
+  }
+
+  function nowTimestamp() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const date = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return { date, paidAt: `${date} ${time}` };
+  }
+
+  function openOblPayModal(id) {
+    const obl = allObligations.find(o => o.id === id);
+    if (!obl) return;
+    activePayOblId = id;
+    const s = getOblStats(obl);
+    const suggested = Number(obl.defaultPayment) > 0 ? Math.min(Number(obl.defaultPayment), s.remaining) : s.remaining;
+    document.getElementById('payModalTitle').textContent = `دفعة: ${obl.title}`;
+    document.getElementById('payModalRem').textContent = formatNum(s.remaining) + ' د.ع';
+    document.getElementById('payAmountInput').value = suggested || '';
+    document.getElementById('payAutoTime').textContent = nowTimestamp().paidAt;
+    document.getElementById('payNoteInput').value = '';
+    document.getElementById('payLogExpenseCheck').checked = true;
+    document.getElementById('oblPayModal').classList.add('open');
+  }
+
+  function closeOblPayModal() {
+    document.getElementById('oblPayModal').classList.remove('open');
+    activePayOblId = null;
+  }
+
+  async function confirmOblPayment() {
+    const obl = allObligations.find(o => o.id === activePayOblId);
+    if (!obl) return;
+    const amount = Number(document.getElementById('payAmountInput').value) || 0;
+    if (amount <= 0) { showToast('يرجى إدخال مبلغ صحيح'); return; }
+    const note = document.getElementById('payNoteInput').value.trim();
+    const alsoLogExpense = document.getElementById('payLogExpenseCheck').checked;
+    const ts = nowTimestamp();
+    const payment = {
+      id: 'PAY-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      obligationId: obl.id,
+      amount,
+      date: ts.date,
+      paidAt: ts.paidAt,
+      note
+    };
+
+    const btn = document.getElementById('confirmPayBtn');
+    btn.disabled = true; btn.textContent = 'جارٍ التسجيل...';
+
+    if (!Array.isArray(obl.payments)) obl.payments = [];
+    obl.payments.push(payment);
+    localStorage.setItem('finance_obligations_v1', JSON.stringify(allObligations));
+    renderObligations();
+    closeOblPayModal();
+    showToast('تم تسجيل الدفعة بنجاح');
+
+    const expCat = OBL_EXP_CAT[obl.kind] || 'الديون';
+    const expDesc = `${obl.title}${note ? ' - ' + note : ''}`;
+
+    if (apiUrl && userPin) {
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            pin: userPin,
+            action: 'add_obligation_payment',
+            payment,
+            alsoLogExpense,
+            expenseCategory: expCat,
+            expenseDescription: expDesc
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'success' && data.transaction) {
+          allTransactions.unshift(data.transaction);
+          allTransactions.sort((a, b) => (b.date > a.date ? 1 : -1));
+          populateMonthFilters(); renderRecent(); renderHistory(); renderStats();
+        }
+      } catch (e) {}
+    }
+    btn.disabled = false; btn.textContent = 'تأكيد وتسجيل الدفعة';
+  }
+
+  async function deleteObligation(id) {
+    if (!confirm('هل تريد حذف هذا الالتزام مع سجل دفعاته؟')) return;
+    allObligations = allObligations.filter(o => o.id !== id);
+    localStorage.setItem('finance_obligations_v1', JSON.stringify(allObligations));
+    renderObligations();
+    showToast('تم الحذف');
+    if (apiUrl && userPin) {
+      try {
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ pin: userPin, action: 'delete_obligation', id })
+        });
+      } catch (e) {}
+    }
+  }
+
+  async function deleteOblPayment(oblId, payId) {
+    if (!confirm('هل تريد حذف هذه الدفعة؟')) return;
+    const obl = allObligations.find(o => o.id === oblId);
+    if (!obl) return;
+    obl.payments = (obl.payments || []).filter(p => p.id !== payId);
+    localStorage.setItem('finance_obligations_v1', JSON.stringify(allObligations));
+    renderObligations();
+    showToast('تم حذف الدفعة');
+    if (apiUrl && userPin) {
+      try {
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ pin: userPin, action: 'delete_obligation_payment', paymentId: payId })
+        });
+      } catch (e) {}
+    }
+  }
+
+  renderObligations();
+
   function switchTab(tab, btn) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('view-' + tab).classList.add('active');
     if (btn) btn.classList.add('active');
     if (tab === 'stats') requestAnimationFrame(() => renderStats());
+    if (tab === 'obligations') renderObligations();
   }
 
   function setSyncState(loading, text) {

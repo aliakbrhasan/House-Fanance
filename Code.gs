@@ -1,6 +1,8 @@
 const SECRET_PIN = '1234'; // يمكنك تغيير الرمز السري هنا
 const DATA_SHEET_NAME = 'App_Data';
 const CAT_SHEET_NAME = 'App_Categories';
+const OBL_SHEET_NAME = 'App_Obligations';
+const OBL_PAY_SHEET_NAME = 'App_Obligation_Payments';
 const DEFAULT_EXPENSE_CATS = ['المنزل', 'تمتم', 'غصون', 'علي', 'السيارة والمواصلات', 'صحة وعناية', 'هدنة', 'الادخار (السلف)', 'السفر', 'الديون'];
 const DEFAULT_INCOME_CATS = ['راتب علي', 'راتب غصون', 'بيج تمتم', 'مدخرات (زين كاش_نيو)', 'القبس', 'اعمال اخرى', 'استدانة'];
 
@@ -33,7 +35,8 @@ function doGet(e) {
 
     transactions.sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
     const categories = getOrInitCategories_();
-    return jsonResponse({ status: 'success', transactions, categories });
+    const obligations = getObligations_();
+    return jsonResponse({ status: 'success', transactions, categories, obligations });
   } catch (err) {
     return jsonResponse({ status: 'error', message: err.message });
   }
@@ -98,6 +101,41 @@ function doPost(e) {
       return jsonResponse({ status: 'success' });
     }
 
+    if (body.action === 'add_obligation' && body.obligation) {
+      addObligationToSheet_(body.obligation);
+      return jsonResponse({ status: 'success' });
+    }
+
+    if (body.action === 'add_obligation_payment' && body.payment) {
+      const pay = body.payment;
+      addObligationPaymentToSheet_(pay);
+      let loggedTx = null;
+      if (body.alsoLogExpense) {
+        const dateStr = pay.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        loggedTx = {
+          id: 'TX-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+          date: dateStr,
+          month: dateStr.substring(0, 7),
+          type: 'expense',
+          amount: Number(pay.amount) || 0,
+          category: String(body.expenseCategory || 'الديون').trim(),
+          description: String(body.expenseDescription || '').trim()
+        };
+        sheet.appendRow([loggedTx.id, loggedTx.date, loggedTx.month, loggedTx.type, loggedTx.amount, loggedTx.category, loggedTx.description, new Date().toISOString()]);
+      }
+      return jsonResponse({ status: 'success', payment: pay, transaction: loggedTx });
+    }
+
+    if (body.action === 'delete_obligation' && body.id) {
+      deleteObligationFromSheet_(String(body.id));
+      return jsonResponse({ status: 'success' });
+    }
+
+    if (body.action === 'delete_obligation_payment' && body.paymentId) {
+      deleteObligationPaymentFromSheet_(String(body.paymentId));
+      return jsonResponse({ status: 'success' });
+    }
+
     return jsonResponse({ status: 'error', message: 'إجراء غير مدعوم' });
   } catch (err) {
     return jsonResponse({ status: 'error', message: err.message });
@@ -159,6 +197,110 @@ function saveCategoriesToSheet_(cats) {
   (cats.expense || []).forEach(c => { const v = String(c || '').trim(); if (v) rows.push(['expense', v]); });
   (cats.income || []).forEach(c => { const v = String(c || '').trim(); if (v) rows.push(['income', v]); });
   sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+}
+
+function getOrCreateOblSheets_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let oblSheet = ss.getSheetByName(OBL_SHEET_NAME);
+  if (!oblSheet) {
+    oblSheet = ss.insertSheet(OBL_SHEET_NAME);
+    oblSheet.appendRow(['ID', 'Kind', 'Title', 'Party', 'TotalAmount', 'PaidBefore', 'DefaultPayment', 'Notes', 'CreatedAt']);
+    oblSheet.setFrozenRows(1);
+  }
+  let paySheet = ss.getSheetByName(OBL_PAY_SHEET_NAME);
+  if (!paySheet) {
+    paySheet = ss.insertSheet(OBL_PAY_SHEET_NAME);
+    paySheet.appendRow(['PaymentID', 'ObligationID', 'Amount', 'Date', 'PaidAt', 'Note']);
+    paySheet.setFrozenRows(1);
+  }
+  return { oblSheet, paySheet };
+}
+
+function getObligations_() {
+  const { oblSheet, paySheet } = getOrCreateOblSheets_();
+  const oblRows = oblSheet.getDataRange().getValues();
+  const payRows = paySheet.getDataRange().getValues();
+  const payMap = {};
+  for (let i = 1; i < payRows.length; i++) {
+    const r = payRows[i];
+    if (!r[0] || !r[1]) continue;
+    const oblId = String(r[1]);
+    if (!payMap[oblId]) payMap[oblId] = [];
+    payMap[oblId].push({
+      id: String(r[0]),
+      obligationId: oblId,
+      amount: Number(r[2]) || 0,
+      date: formatDateCell_(r[3]),
+      paidAt: String(r[4] || ''),
+      note: String(r[5] || '')
+    });
+  }
+  const list = [];
+  for (let i = 1; i < oblRows.length; i++) {
+    const r = oblRows[i];
+    if (!r[0]) continue;
+    const id = String(r[0]);
+    list.push({
+      id,
+      kind: String(r[1] || 'installment'),
+      title: String(r[2] || ''),
+      party: String(r[3] || ''),
+      totalAmount: Number(r[4]) || 0,
+      paidBefore: Number(r[5]) || 0,
+      defaultPayment: Number(r[6]) || 0,
+      notes: String(r[7] || ''),
+      createdAt: String(r[8] || ''),
+      payments: payMap[id] || []
+    });
+  }
+  return list.reverse();
+}
+
+function addObligationToSheet_(o) {
+  const { oblSheet } = getOrCreateOblSheets_();
+  oblSheet.appendRow([
+    String(o.id || ''),
+    String(o.kind || 'installment'),
+    String(o.title || ''),
+    String(o.party || ''),
+    Number(o.totalAmount) || 0,
+    Number(o.paidBefore) || 0,
+    Number(o.defaultPayment) || 0,
+    String(o.notes || ''),
+    String(o.createdAt || new Date().toISOString())
+  ]);
+}
+
+function addObligationPaymentToSheet_(p) {
+  const { paySheet } = getOrCreateOblSheets_();
+  paySheet.appendRow([
+    String(p.id || ''),
+    String(p.obligationId || ''),
+    Number(p.amount) || 0,
+    String(p.date || ''),
+    String(p.paidAt || ''),
+    String(p.note || '')
+  ]);
+}
+
+function deleteObligationFromSheet_(id) {
+  const { oblSheet, paySheet } = getOrCreateOblSheets_();
+  const oVals = oblSheet.getDataRange().getValues();
+  for (let i = oVals.length - 1; i >= 1; i--) {
+    if (String(oVals[i][0]) === id) oblSheet.deleteRow(i + 1);
+  }
+  const pVals = paySheet.getDataRange().getValues();
+  for (let i = pVals.length - 1; i >= 1; i--) {
+    if (String(pVals[i][1]) === id) paySheet.deleteRow(i + 1);
+  }
+}
+
+function deleteObligationPaymentFromSheet_(payId) {
+  const { paySheet } = getOrCreateOblSheets_();
+  const pVals = paySheet.getDataRange().getValues();
+  for (let i = pVals.length - 1; i >= 1; i--) {
+    if (String(pVals[i][0]) === payId) paySheet.deleteRow(i + 1);
+  }
 }
 
 function migrateHistoricalSheets_(ss, dataSheet) {
